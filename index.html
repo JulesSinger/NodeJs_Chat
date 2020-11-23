@@ -1,0 +1,133 @@
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperChat</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <p>Made By SINGER Jules</p>
+        <p>Last Version : 1.0.0</p>
+    </header>
+
+    <div class="whiteSeparator"> </div>
+
+    <div id="welcomeWrapper">
+
+        <div id="title">
+            <h1>Welcome to the online chat !</h1>
+        </div>
+
+        <div id="userConnect">
+
+        </div>
+     
+    </div>
+
+    <div id="main-container">
+        <div id="chat">
+            <section id="chatRoom"> </section>
+
+            <div id="sender">
+                <input type="text" placeholder="Write your message here"  id="inputChat"> 
+                <input type="button" value="envoyer le message" id="sendButton">
+            </div>
+        </div>
+
+        <section id="connectedUsers">
+            <p>Connected users list :</p>
+        </section>
+    </div>
+
+    
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = io.connect('http://localhost:8080');
+        let myPseudo = prompt('Quel est votre pseudo ?')
+        
+
+        // page configuration by nickname
+        document.title = myPseudo + " - " + document.title
+
+        let userConnect = document.getElementById('userConnect')
+        let userParagraphe = document.createElement('p')
+        userParagraphe.innerHTML = "Connected User : " + myPseudo
+        userConnect.append(userParagraphe)
+
+        // sending the nickname to the server
+        socket.emit('newPseudo', myPseudo)
+
+        // display of the person's arrival on the chat room
+        let chatRoom = document.getElementById('chatRoom')
+        socket.on('newPseudo', function(pseudo) {
+            let pJoinChat = document.createElement("p")
+            pJoinChat.classList.add('join')
+            pJoinChat.innerHTML = (pseudo === myPseudo) ? 'Vous avez rejoint le chat !' : pseudo + " a rejoint le chat !"
+            chatRoom.append(pJoinChat)
+        })
+
+        // display of users connected
+        let connectedUsers = document.getElementById('connectedUsers') 
+   
+        socket.on('addUserList', function(pseudo){
+            userAlreadyExist = false
+            for(let i=1 ; i<connectedUsers.childElementCount ; i++){
+                if((connectedUsers.children[i].innerHTML == "Vous" && myPseudo == pseudo) || connectedUsers.children[i].innerHTML == pseudo ){
+                    userAlreadyExist = true
+                    break
+                }
+            }
+
+            if(userAlreadyExist === false){
+                let pAddUserList = document.createElement("p")
+                pAddUserList.classList.add('new')
+                pAddUserList.innerHTML = (pseudo === myPseudo) ? 'Vous' : pseudo
+                connectedUsers.append(pAddUserList)
+            }
+        })
+
+        // when we receive a 'chat' signal, we add the message in the chat room.
+        socket.on('chat', function(pseudo,message){
+            let p = document.createElement('p')
+            p.innerHTML = (pseudo == myPseudo) ? 'Vous - ' + message : pseudo + " - " + message
+            chatRoom.append(p)
+            text.value = ""
+        })
+
+        socket.on('disc', function(pseudo){
+            let p = document.createElement('p')
+            p.innerHTML = pseudo + " s'est déconnecté du chat."
+            chatRoom.append(p)
+            for(let i=1 ; i<connectedUsers.childElementCount ; i++){
+                if((connectedUsers.children[i].innerHTML == "Vous" && myPseudo == pseudo) || connectedUsers.children[i].innerHTML == pseudo ){
+                    connectedUsers.removeChild(connectedUsers.children[i])
+                }
+            }
+        })
+
+        // send a signal to the server when the user presse the button 
+        let text = document.getElementById('inputChat')
+        let send = document.getElementById('sendButton')
+        send.addEventListener('click', function(){
+            if(text.value != ""){
+                let message = text.value
+                socket.emit('chat', myPseudo, message )
+            }
+            text.focus()
+        })
+
+        // send a signal to the server when the user presse enter 
+        document.addEventListener('keypress', (event) => {
+            if (event.keyCode == 13 && text.value != "" ){
+                let message = text.value
+                socket.emit('chat', myPseudo, message )
+            }
+        })
+       
+    </script>
+</body>
+</html>
